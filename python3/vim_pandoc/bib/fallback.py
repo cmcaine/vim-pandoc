@@ -37,7 +37,15 @@ def get_bibtex_suggestions(text, query, use_bibtool=False, bib=None):
 
         search = ["--", "select{$key title booktitle author editor \"%(query)s\"}" % {"query": query}]
         cmd = ["bibtool", "--preserve.key.case=on", *extra_args, *search, bib]
-        text = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE).communicate()[0]
+
+        # bibtool doesn't set returncode non-zero, so we have to look in stderr.
+        text, err = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE).communicate()
+        if isinstance(err, bytes):
+            err = err.decode("utf-8")
+        if 'ERROR' in err:
+            sys.stderr.write(err)
+            raise Exception('bibtool gave an error. Consider disabling bibtool with let g:pandoc#biblio#use_bibtool = 0')
+
         if isinstance(text, bytes):
             text = text.decode("utf-8")
     else:
